@@ -1,0 +1,55 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   commands.c                                         :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: yunhpark <yunhpark@student.42gyeongsan.kr> +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/12 15:20:00 by yunhpark          #+#    #+#             */
+/*   Updated: 2026/01/12 15:20:00 by yunhpark         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include "../../include/parser.h"
+
+int	execute_read(t_context *ctx, char *line)
+{
+	long	lba;
+	char	buf[BLOCK_SIZE];
+
+	line = skip_whitespace(line + 1);
+	if (parse_number(line, &lba))
+	{
+		perror("invalid script line");
+		return (1);
+	}
+	if (read_block(ctx, (size_t)lba, buf))
+		return (1);
+	return (0);
+}
+
+int	execute_write(t_context *ctx, char *line)
+{
+	long	lba;
+	long	byte_val;
+	char	buf[BLOCK_SIZE];
+
+	line = skip_whitespace(line + 1);
+	if (parse_number(line, &lba))
+	{
+		perror("invalid script line");
+		return (1);
+	}
+	while (*line && *line != ' ' && *line != '\t')
+		line++;
+	line = skip_whitespace(line);
+	if (parse_number(line, &byte_val))
+	{
+		perror("invalid script line");
+		return (1);
+	}
+	memset(buf, (unsigned char)byte_val, BLOCK_SIZE);
+	if (write_block(ctx, (size_t)lba, buf))
+		return (1);
+	return (0);
+}

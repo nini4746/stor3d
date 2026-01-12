@@ -1,0 +1,34 @@
+# Executable
+stor3D
+
+# Object files
+obj/
+*.o
+
+# Disk images
+*.img
+
+# Test script files (except the tester)
+*.txt
+!test_stor3d.sh
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.log
+
+# Core dumps
+core
+core.*

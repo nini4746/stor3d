@@ -10,7 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/stor3d.h"
+#include "../../include/stor3d.h"
 
 int	is_valid(int argc, char **argv)
 {
@@ -19,15 +19,16 @@ int	is_valid(int argc, char **argv)
 		perror("usage : ./stor3D <mode> <disk.img> <script.txt>");
 		return (1);
 	}
-	if (strcmp(argv[1],"hdd") && strcmp(argv[1],"ssd") != 0)
+	if (strcmp(argv[1], "hdd") != 0 && strcmp(argv[1], "ssd") != 0)
 	{
 		perror("mode is only hdd, ssd");
 		return (1);
 	}
-	if (valid_image(argv[1], argv[2])) 
+	if (valid_image(argv[2]))
 		return (1);
 	if (valid_script(argv[3]))
-	return (1);
+		return (1);
+	return (0);
 }
 
 int	create_image(const char *image_path)
@@ -58,7 +59,7 @@ int	create_image(const char *image_path)
 	return (0);
 }
 
-int	valid_image(char *mode, const char *image_path)
+int	valid_image(const char *image_path)
 {
 	int		fd;
 	long	size;

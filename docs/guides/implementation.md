@@ -106,7 +106,7 @@ All errors use `perror()` with descriptive messages:
 ```c
 perror("usage : ./stor3D <mode> <disk.img> <script.txt>");
 perror("invalid disk image size");
-perror("invalid mode");
+perror("mode is only hdd, ssd");
 perror("cannot open disk image");
 perror("cannot open script");
 perror("invalid script line");
@@ -153,6 +153,29 @@ perror("no space left on device");
 #define HDD_SEEK_COST 0.05
 #define HDD_ROTATIONAL_LATENCY 2.0
 #define HDD_TRANSFER_COST 0.1
+
+// Mode enumeration
+typedef enum e_mode
+{
+    MODE_HDD,
+    MODE_SSD
+}   t_mode;
+
+// Runtime context structure
+typedef struct s_context
+{
+    int         disk_fd;        // Disk image file descriptor
+    int         script_fd;      // Script file descriptor
+    t_mode      mode;           // HDD or SSD mode
+    size_t      total_reads;    // Total read operations
+    size_t      total_writes;   // Total write operations
+    double      total_time_ms;  // HDD: accumulated time
+    long        prev_lba;       // HDD: previous LBA for seek calculation
+    size_t      host_writes;    // SSD: writes from host
+    size_t      nand_writes;    // SSD: actual NAND writes
+    size_t      erases;         // SSD: erase operations
+    size_t      gc_moves;       // SSD: pages moved during GC
+}   t_context;
 ```
 
 ## Recommended Project Structure
@@ -214,7 +237,7 @@ stor3d/
 
 #### validate_image() - Main validation entry
 ```c
-int valid_image(char *mode, const char *image_path)
+int valid_image(const char *image_path)
 {
     int fd;
     long size;
@@ -309,12 +332,12 @@ int is_valid(int argc, char **argv)
     // 2. Mode validation (only "hdd" or "ssd")
     if (strcmp(argv[1], "hdd") != 0 && strcmp(argv[1], "ssd") != 0)
     {
-        perror("invalid mode");
+        perror("mode is only hdd, ssd");
         return (1);
     }
 
     // 3. Disk image validation
-    if (valid_image(argv[1], argv[2]))
+    if (valid_image(argv[2]))
         return (1);
 
     // 4. Script file validation
@@ -324,6 +347,79 @@ int is_valid(int argc, char **argv)
     return (0);
 }
 ```
+
+### Context Initialization (init.c)
+
+**Important**: Functions must not exceed 25 lines (42 norm). Split initialization logic into helper functions.
+
+#### open_context_files() - Helper function
+
+**Note**: Do NOT use `static` during development. Add `static` only in final cleanup phase.
+
+```c
+// TODO: static으로 변경 예정
+int	open_context_files(t_context *ctx, char **argv)
+{
+	ctx->disk_fd = open(argv[2], O_RDWR);
+	if (ctx->disk_fd < 0)
+	{
+		perror("cannot open disk image");
+		free(ctx);
+		return (1);
+	}
+	ctx->script_fd = open(argv[3], O_RDONLY);
+	if (ctx->script_fd < 0)
+	{
+		perror("cannot open script");
+		close(ctx->disk_fd);
+		free(ctx);
+		return (1);
+	}
+	return (0);
+}
+```
+
+#### init_context() - Main initialization
+```c
+int	init_context(t_context **ctx, char **argv)
+{
+	*ctx = (t_context *)malloc(sizeof(t_context));
+	if (!*ctx)
+	{
+		perror("malloc failed");
+		return (1);
+	}
+	memset(*ctx, 0, sizeof(t_context));
+	if (strcmp(argv[1], "hdd") == 0)
+		(*ctx)->mode = MODE_HDD;
+	else
+		(*ctx)->mode = MODE_SSD;
+	(*ctx)->prev_lba = -1;
+	if (open_context_files(*ctx, argv))
+		return (1);
+	return (0);
+}
+```
+
+#### cleanup_context() - Resource cleanup
+```c
+void	cleanup_context(t_context *ctx)
+{
+	if (!ctx)
+		return ;
+	if (ctx->disk_fd >= 0)
+		close(ctx->disk_fd);
+	if (ctx->script_fd >= 0)
+		close(ctx->script_fd);
+	free(ctx);
+}
+```
+
+**Key Points**:
+- Use `enum` for mode instead of storing string pointer
+- Initialize `prev_lba` to `-1` for HDD tracking
+- Split into helper functions to respect 25-line limit
+- Proper resource cleanup on error
 
 ## Testing
 

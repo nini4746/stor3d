@@ -21,8 +21,10 @@
 # include <errno.h>
 # include <stdio.h>
 # include <fcntl.h>
-# include<sys/types.h>
-# include<sys/stat.h>
+# include <sys/types.h>
+# include <sys/stat.h>
+# include "hdd.h"
+# include "ssd.h"
 
 # define BLOCK_SIZE 4096
 # define BLOCK_COUNT 8192
@@ -31,20 +33,40 @@
 // FS_LITE
 # define MAX_FILES 64
 
-// SSD Flash Model
-# define PAGE_SIZE 4096
-# define PAGES_PER_BLOCK 256
-# define ERASE_BLOCK_COUNT 32
-# define SSD_GC_THRESHOLD 0.5
+// Forward declarations
+typedef struct s_hdd_state	t_hdd_state;
+typedef struct s_ssd_state	t_ssd_state;
 
-// HDD Cost Model (in milliseconds)
-# define HDD_SEEK_COST 0.05
-# define HDD_ROTATIONAL_LATENCY 2.0
-# define HDD_TRANSFER_COST 0.1
+typedef enum e_mode
+{
+	MODE_HDD,
+	MODE_SSD
+}	t_mode;
 
 typedef struct s_context
 {
-    int a;
-}t_context;
+	int				disk_fd;
+	int				script_fd;
+	t_mode			mode;
+
+	// Mode-specific state (only one will be allocated)
+	t_hdd_state		*hdd;
+	t_ssd_state		*ssd;
+}	t_context;
+
+int	init_context(t_context **ctx, char **argv);
+int	open_context_files(t_context *ctx, char **argv);
+void	cleanup_context(t_context *ctx);
+int	is_valid(int argc, char **argv);
+int	valid_image(const char *image_path);
+int	valid_script(const char *script_path);
+int	create_image(const char *image_path);
+
+// Block Device Interface
+int	read_block(t_context *ctx, size_t lba, void *buf);
+int	write_block(t_context *ctx, size_t lba, const void *buf);
+
+// Script Parser
+int	run_script(t_context *ctx);
 
 #endif

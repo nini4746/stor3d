@@ -16,8 +16,16 @@ int	main(int argc, char **argv)
 {
 	t_context	*context;
 
+	context = NULL;
 	if (is_valid(argc, argv))
 		return (1);
-	if (init_context(argv))
+	if (init_context(&context, argv))
 		return (1);
+	if (run_script(context))
+	{
+		cleanup_context(context);
+		return (1);
+	}
+	cleanup_context(context);
+	return (0);
 }
