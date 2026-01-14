@@ -33,27 +33,30 @@ int	open_context_files(t_context *ctx, char **argv)
 	return (0);
 }
 
+static int	init_device(t_context *ctx, char **argv)
+{
+	if (strcmp(argv[1], "hdd") == 0)
+	{
+		ctx->mode = MODE_HDD;
+		return (hdd_init(&ctx->hdd));
+	}
+	else
+	{
+		ctx->mode = MODE_SSD;
+		return (ssd_init(&ctx->ssd));
+	}
+}
+
 int	init_context(t_context **ctx, char **argv)
 {
 	*ctx = (t_context *)malloc(sizeof(t_context));
 	if (!*ctx)
-	{
-		perror("malloc failed");
-		return (1);
-	}
+		return (perror("malloc failed"), 1);
 	memset(*ctx, 0, sizeof(t_context));
-	if (strcmp(argv[1], "hdd") == 0)
-	{
-		(*ctx)->mode = MODE_HDD;
-		if (hdd_init(&(*ctx)->hdd))
-			return (1);
-	}
-	else
-	{
-		(*ctx)->mode = MODE_SSD;
-		if (ssd_init(&(*ctx)->ssd))
-			return (1);
-	}
+	if (init_device(*ctx, argv))
+		return (1);
+	if (fs_init(&(*ctx)->fs))
+		return (1);
 	if (open_context_files(*ctx, argv))
 		return (1);
 	return (0);
@@ -71,5 +74,7 @@ void	cleanup_context(t_context *ctx)
 		hdd_cleanup(ctx->hdd);
 	if (ctx->mode == MODE_SSD && ctx->ssd)
 		ssd_cleanup(ctx->ssd);
+	if (ctx->fs)
+		fs_cleanup(ctx->fs);
 	free(ctx);
 }

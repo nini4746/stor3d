@@ -24,8 +24,22 @@ SRCS		= $(SRC_DIR)/main.c \
 			  $(SRC_DIR)/init/context.c \
 			  $(SRC_DIR)/device/block_device.c \
 			  $(SRC_DIR)/parser/parser.c \
+			  $(SRC_DIR)/parser/commands.c \
+			  $(SRC_DIR)/parser/file_commands.c \
+			  $(SRC_DIR)/parser/utils.c \
 			  $(SRC_DIR)/hdd/hdd_init.c \
-			  $(SRC_DIR)/ssd/ssd_init.c
+			  $(SRC_DIR)/hdd/hdd_helpers.c \
+			  $(SRC_DIR)/hdd/hdd_cache.c \
+			  $(SRC_DIR)/hdd/hdd_io.c \
+			  $(SRC_DIR)/ssd/ssd_init.c \
+			  $(SRC_DIR)/ssd/ssd_ftl.c \
+			  $(SRC_DIR)/ssd/ssd_gc.c \
+			  $(SRC_DIR)/ssd/ssd_gc_helpers.c \
+			  $(SRC_DIR)/ssd/ssd_io.c \
+			  $(SRC_DIR)/filesystem/fs_init.c \
+			  $(SRC_DIR)/filesystem/fs_alloc.c \
+			  $(SRC_DIR)/filesystem/fs_file.c \
+			  $(SRC_DIR)/filesystem/fs_ops.c
 
 OBJS		= $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 

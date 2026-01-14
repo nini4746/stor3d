@@ -31,11 +31,27 @@ int	is_valid(int argc, char **argv)
 	return (0);
 }
 
+static int	write_empty_blocks(int fd, char *buf)
+{
+	size_t	i;
+
+	i = 0;
+	while (i < BLOCK_COUNT)
+	{
+		if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
+		{
+			perror("cannot create disk image");
+			return (1);
+		}
+		i++;
+	}
+	return (0);
+}
+
 int	create_image(const char *image_path)
 {
 	int		fd;
 	char	buf[BLOCK_SIZE];
-	size_t	i;
 
 	fd = open(image_path, O_RDWR | O_CREAT, 0644);
 	if (fd < 0)
@@ -44,16 +60,10 @@ int	create_image(const char *image_path)
 		return (1);
 	}
 	memset(buf, 0, BLOCK_SIZE);
-	i = 0;
-	while (i < BLOCK_COUNT)
+	if (write_empty_blocks(fd, buf))
 	{
-		if (write(fd, buf, BLOCK_SIZE) != BLOCK_SIZE)
-		{
-			perror("cannot create disk image");
-			close(fd);
-			return (1);
-		}
-		i++;
+		close(fd);
+		return (1);
 	}
 	close(fd);
 	return (0);
@@ -86,7 +96,7 @@ int	valid_image(const char *image_path)
 
 int	valid_script(const char *script_path)
 {
-	int fd;
+	int	fd;
 
 	fd = open(script_path, O_RDONLY);
 	if (fd < 0)

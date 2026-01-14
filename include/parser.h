@@ -25,6 +25,10 @@ char	*read_next_line(char *buffer, char *line_buf, size_t *offset);
 // Command execution functions
 int		execute_read(t_context *ctx, char *line);
 int		execute_write(t_context *ctx, char *line);
+int		execute_create_file(t_context *ctx, char *line);
+int		execute_write_file(t_context *ctx, char *line);
+int		execute_read_file(t_context *ctx, char *line);
+int		execute_checksum(t_context *ctx, char *line);
 
 // Parser functions
 int		parse_line(t_context *ctx, char *line);

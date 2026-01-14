@@ -42,28 +42,22 @@ typedef struct s_cache_entry
 	size_t	last_access;
 }	t_cache_entry;
 
-// HDD State
 typedef struct s_hdd_state
 {
-	// Physical position
-	int			prev_cylinder;
-	int			prev_head;
-	size_t		prev_lba;
-
-	// Cache
+	int				prev_cylinder;
+	int				prev_head;
+	size_t			prev_lba;
 	t_cache_entry	cache[HDD_CACHE_SIZE];
 	size_t			cache_clock;
 	size_t			sequential_count;
 	size_t			last_sequential_lba;
-
-	// Statistics
-	size_t		total_reads;
-	size_t		total_writes;
-	size_t		cylinder_seeks;
-	size_t		head_switches;
-	size_t		cache_hits;
-	size_t		cache_misses;
-	double		total_time_ms;
+	size_t			total_reads;
+	size_t			total_writes;
+	size_t			cylinder_seeks;
+	size_t			head_switches;
+	size_t			cache_hits;
+	size_t			cache_misses;
+	double			total_time_ms;
 }	t_hdd_state;
 
 // HDD Functions
@@ -77,5 +71,16 @@ void	hdd_print_stats(t_hdd_state *hdd);
 int		hdd_lba_to_chs(size_t lba, int *cylinder, int *head, int *sector);
 int		hdd_get_zone(int cylinder);
 double	hdd_get_transfer_time(int zone);
+double	hdd_calculate_seek_cost(t_hdd_state *hdd, int cylinder, int head);
+double	hdd_calc_read_cost(t_hdd_state *hdd, int cyl, int head, int zone);
+
+// Cache functions
+int		hdd_cache_lookup(t_hdd_state *hdd, size_t lba);
+void	hdd_cache_insert(t_hdd_state *hdd, size_t lba);
+void	hdd_cache_invalidate(t_hdd_state *hdd, size_t lba);
+
+// I/O functions
+int		hdd_do_physical_read(int disk_fd, size_t lba, void *buf);
+int		hdd_do_physical_write(int disk_fd, size_t lba, const void *buf);
 
 #endif

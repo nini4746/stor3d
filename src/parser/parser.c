@@ -12,20 +12,61 @@
 
 #include "../../include/parser.h"
 
-int	parse_line(t_context *ctx, char *line)
+static int	parse_file_command(t_context *ctx, char *line)
 {
-	line = skip_whitespace(line);
-	if (*line == '\0' || *line == '\n' || *line == '#')
-		return (0);
-	if (*line == 'R')
-		return (execute_read(ctx, line));
-	else if (*line == 'W')
-		return (execute_write(ctx, line));
+	if (strncmp(line, "CF", 2) == 0)
+		return (execute_create_file(ctx, line));
+	else if (strncmp(line, "WF", 2) == 0)
+		return (execute_write_file(ctx, line));
+	else if (strncmp(line, "RF", 2) == 0)
+		return (execute_read_file(ctx, line));
+	else if (strncmp(line, "CHK", 3) == 0)
+		return (execute_checksum(ctx, line));
 	else
 	{
 		perror("invalid script line");
 		return (1);
 	}
+}
+
+int	parse_line(t_context *ctx, char *line)
+{
+	line = skip_whitespace(line);
+	if (*line == '\0' || *line == '\n' || *line == '#')
+		return (0);
+	if (*line == 'R' && (line[1] == ' ' || line[1] == '\t'))
+		return (execute_read(ctx, line));
+	else if (*line == 'W' && (line[1] == ' ' || line[1] == '\t'))
+		return (execute_write(ctx, line));
+	else if (*line == 'C' || *line == 'W' || *line == 'R')
+		return (parse_file_command(ctx, line));
+	else
+	{
+		perror("invalid script line");
+		return (1);
+	}
+}
+
+static char	*expand_buffer(char *old_buf, size_t old_size, char *data,
+		ssize_t len)
+{
+	char	*new_buf;
+
+	new_buf = malloc(old_size + len + 1);
+	if (!new_buf)
+	{
+		free(old_buf);
+		perror("malloc failed");
+		return (NULL);
+	}
+	if (old_buf)
+	{
+		memcpy(new_buf, old_buf, old_size);
+		free(old_buf);
+	}
+	memcpy(new_buf + old_size, data, len);
+	new_buf[old_size + len] = '\0';
+	return (new_buf);
 }
 
 char	*read_script_to_buffer(int fd)
@@ -34,28 +75,17 @@ char	*read_script_to_buffer(int fd)
 	char	temp[BUFFER_SIZE];
 	ssize_t	bytes_read;
 	size_t	total_size;
-	char	*new_buffer;
 
 	buffer = NULL;
 	total_size = 0;
-	while ((bytes_read = read(fd, temp, BUFFER_SIZE)) > 0)
+	bytes_read = read(fd, temp, BUFFER_SIZE);
+	while (bytes_read > 0)
 	{
-		new_buffer = malloc(total_size + bytes_read + 1);
-		if (!new_buffer)
-		{
-			free(buffer);
-			perror("malloc failed");
+		buffer = expand_buffer(buffer, total_size, temp, bytes_read);
+		if (!buffer)
 			return (NULL);
-		}
-		if (buffer)
-		{
-			memcpy(new_buffer, buffer, total_size);
-			free(buffer);
-		}
-		memcpy(new_buffer + total_size, temp, bytes_read);
 		total_size += bytes_read;
-		new_buffer[total_size] = '\0';
-		buffer = new_buffer;
+		bytes_read = read(fd, temp, BUFFER_SIZE);
 	}
 	return (buffer);
 }

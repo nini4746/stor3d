@@ -26,6 +26,10 @@ int	main(int argc, char **argv)
 		cleanup_context(context);
 		return (1);
 	}
+	if (context->mode == MODE_HDD)
+		hdd_print_stats(context->hdd);
+	else
+		ssd_print_stats(context->ssd);
 	cleanup_context(context);
 	return (0);
 }

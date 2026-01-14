@@ -12,6 +12,40 @@
 
 #include "../../include/stor3d.h"
 
+static void	init_ftl_map(t_ssd_state *ssd)
+{
+	size_t	i;
+
+	i = 0;
+	while (i < 8192)
+	{
+		ssd->ftl_map[i].valid = 0;
+		ssd->ftl_map[i].ppa = 0;
+		i++;
+	}
+}
+
+static void	init_blocks(t_ssd_state *ssd)
+{
+	int	block_idx;
+	int	page_idx;
+
+	block_idx = 0;
+	while (block_idx < SSD_ERASE_BLOCK_COUNT)
+	{
+		page_idx = 0;
+		while (page_idx < SSD_PAGES_PER_BLOCK)
+		{
+			ssd->blocks[block_idx].pages[page_idx] = SSD_PAGE_FREE;
+			page_idx++;
+		}
+		ssd->blocks[block_idx].valid_count = 0;
+		ssd->blocks[block_idx].invalid_count = 0;
+		ssd->blocks[block_idx].erase_count = 0;
+		block_idx++;
+	}
+}
+
 int	ssd_init(t_ssd_state **ssd)
 {
 	*ssd = (t_ssd_state *)malloc(sizeof(t_ssd_state));
@@ -22,8 +56,11 @@ int	ssd_init(t_ssd_state **ssd)
 	}
 	memset(*ssd, 0, sizeof(t_ssd_state));
 	(*ssd)->free_pages = SSD_TOTAL_PAGES;
+	(*ssd)->next_free_ppa = 0;
 	(*ssd)->min_erase_count = 0;
 	(*ssd)->max_erase_count = 0;
+	init_ftl_map(*ssd);
+	init_blocks(*ssd);
 	return (0);
 }
 
@@ -33,50 +70,19 @@ void	ssd_cleanup(t_ssd_state *ssd)
 		free(ssd);
 }
 
-int	ssd_read(t_ssd_state *ssd, int disk_fd, size_t lba, void *buf)
-{
-	off_t	offset;
-	ssize_t	bytes_read;
-
-	(void)ssd;
-	offset = lba * BLOCK_SIZE;
-	if (lseek(disk_fd, offset, SEEK_SET) != offset)
-	{
-		perror("lseek failed");
-		return (1);
-	}
-	bytes_read = read(disk_fd, buf, BLOCK_SIZE);
-	if (bytes_read != BLOCK_SIZE)
-	{
-		perror("read failed");
-		return (1);
-	}
-	return (0);
-}
-
-int	ssd_write(t_ssd_state *ssd, int disk_fd, size_t lba, const void *buf)
-{
-	off_t		offset;
-	ssize_t		bytes_written;
-
-	offset = lba * BLOCK_SIZE;
-	if (lseek(disk_fd, offset, SEEK_SET) != offset)
-	{
-		perror("lseek failed");
-		return (1);
-	}
-	bytes_written = write(disk_fd, buf, BLOCK_SIZE);
-	if (bytes_written != BLOCK_SIZE)
-	{
-		perror("write failed");
-		return (1);
-	}
-	ssd->host_writes++;
-	ssd->nand_writes++;
-	return (0);
-}
-
 void	ssd_print_stats(t_ssd_state *ssd)
 {
-	(void)ssd;
+	double	write_amp;
+
+	if (!ssd)
+		return ;
+	if (ssd->host_writes > 0)
+		write_amp = (double)ssd->nand_writes / (double)ssd->host_writes;
+	else
+		write_amp = 0.0;
+	printf("[SSD] host_writes=%zu\n", ssd->host_writes);
+	printf("[SSD] nand_writes=%zu\n", ssd->nand_writes);
+	printf("[SSD] erases=%zu\n", ssd->erases);
+	printf("[SSD] gc_moves=%zu\n", ssd->gc_moves);
+	printf("[SSD] write_amp=%.2f\n", write_amp);
 }

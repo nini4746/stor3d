@@ -35,47 +35,59 @@ void	hdd_cleanup(t_hdd_state *hdd)
 
 int	hdd_read(t_hdd_state *hdd, int disk_fd, size_t lba, void *buf)
 {
-	off_t	offset;
-	ssize_t	bytes_read;
+	int		cylinder;
+	int		head;
+	int		sector;
 
-	offset = lba * BLOCK_SIZE;
-	if (lseek(disk_fd, offset, SEEK_SET) != offset)
+	if (hdd_cache_lookup(hdd, lba))
 	{
-		perror("lseek failed");
-		return (1);
+		if (hdd_do_physical_read(disk_fd, lba, buf))
+			return (1);
+		hdd->total_reads++;
+		return (0);
 	}
-	bytes_read = read(disk_fd, buf, BLOCK_SIZE);
-	if (bytes_read != BLOCK_SIZE)
-	{
-		perror("read failed");
+	hdd_lba_to_chs(lba, &cylinder, &head, &sector);
+	hdd->total_time_ms += hdd_calc_read_cost(hdd, cylinder, head,
+			hdd_get_zone(cylinder));
+	if (hdd_do_physical_read(disk_fd, lba, buf))
 		return (1);
-	}
+	hdd->prev_cylinder = cylinder;
+	hdd->prev_head = head;
+	hdd->prev_lba = lba;
 	hdd->total_reads++;
+	hdd_cache_insert(hdd, lba);
 	return (0);
 }
 
 int	hdd_write(t_hdd_state *hdd, int disk_fd, size_t lba, const void *buf)
 {
-	off_t		offset;
-	ssize_t		bytes_written;
+	int			cylinder;
+	int			head;
+	int			sector;
+	int			zone;
+	double		cost;
 
-	offset = lba * BLOCK_SIZE;
-	if (lseek(disk_fd, offset, SEEK_SET) != offset)
-	{
-		perror("lseek failed");
+	hdd_lba_to_chs(lba, &cylinder, &head, &sector);
+	cost = hdd_calculate_seek_cost(hdd, cylinder, head);
+	cost += HDD_ROTATION_TIME / 2.0;
+	zone = hdd_get_zone(cylinder);
+	cost += hdd_get_transfer_time(zone);
+	hdd->total_time_ms += cost;
+	if (hdd_do_physical_write(disk_fd, lba, buf))
 		return (1);
-	}
-	bytes_written = write(disk_fd, buf, BLOCK_SIZE);
-	if (bytes_written != BLOCK_SIZE)
-	{
-		perror("write failed");
-		return (1);
-	}
+	hdd->prev_cylinder = cylinder;
+	hdd->prev_head = head;
+	hdd->prev_lba = lba;
 	hdd->total_writes++;
+	hdd_cache_invalidate(hdd, lba);
 	return (0);
 }
 
 void	hdd_print_stats(t_hdd_state *hdd)
 {
-	(void)hdd;
+	if (!hdd)
+		return ;
+	printf("[HDD] total_reads=%zu\n", hdd->total_reads);
+	printf("[HDD] total_writes=%zu\n", hdd->total_writes);
+	printf("[HDD] total_time_ms=%.2f\n", hdd->total_time_ms);
 }
