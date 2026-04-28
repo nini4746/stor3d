@@ -184,3 +184,19 @@ stor3d/
 ## 📝 라이선스
 
 Educational Project
+
+---
+
+## 🧪 단위 테스트
+
+`make unit-test` 로 HDD 캐시 동작 단위 테스트 실행. 검증 항목:
+
+- 첫 read 는 miss (cache_misses=1)
+- 동일 LBA 재read 는 hit (cache_hits=1)
+- write 후 read 는 다시 miss (캐시 무효화 확인)
+- total_reads/total_writes 카운터 정합성
+
+## 🩹 최근 수정
+
+- **HDD 캐시 hit 비용 모델**: hit 시 전송 시간(약 0.02ms)을 누적해 캐시 효과가 통계에 반영되도록 수정.
+- **`hdd_print_stats`**: cache_hits / cache_misses / hit_rate 출력 추가.
