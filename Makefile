@@ -60,4 +60,13 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+# 단위 테스트: src/main.c 를 제외한 라이브러리 오브젝트만 링크
+LIB_OBJS = $(filter-out $(OBJ_DIR)/main.o,$(OBJS))
+
+tests/test_hdd_cache: tests/test_hdd_cache.c $(LIB_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
+
+unit-test: tests/test_hdd_cache
+	@./tests/test_hdd_cache
+
+.PHONY: all clean fclean re unit-test

@@ -31,4 +31,4 @@ obj/
 
 # Core dumps
 core
-core.*
+core.*tests/test_hdd_cache
