@@ -43,6 +43,7 @@ int	hdd_read(t_hdd_state *hdd, int disk_fd, size_t lba, void *buf)
 	{
 		if (hdd_do_physical_read(disk_fd, lba, buf))
 			return (1);
+		hdd->total_time_ms += hdd_get_transfer_time(0) / 4.0;
 		hdd->total_reads++;
 		return (0);
 	}
@@ -85,9 +86,19 @@ int	hdd_write(t_hdd_state *hdd, int disk_fd, size_t lba, const void *buf)
 
 void	hdd_print_stats(t_hdd_state *hdd)
 {
+	size_t	lookups;
+	double	hit_rate;
+
 	if (!hdd)
 		return ;
 	printf("[HDD] total_reads=%zu\n", hdd->total_reads);
 	printf("[HDD] total_writes=%zu\n", hdd->total_writes);
 	printf("[HDD] total_time_ms=%.2f\n", hdd->total_time_ms);
+	lookups = hdd->cache_hits + hdd->cache_misses;
+	if (lookups > 0)
+		hit_rate = (double)hdd->cache_hits * 100.0 / (double)lookups;
+	else
+		hit_rate = 0.0;
+	printf("[HDD] cache_hits=%zu cache_misses=%zu hit_rate=%.1f%%\n",
+		hdd->cache_hits, hdd->cache_misses, hit_rate);
 }
