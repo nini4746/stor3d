@@ -36,3 +36,4 @@ tests/test_hdd_cache
 obj/
 *.o
 tests/test_ssd_ftl
+tests/test_ssd_writes
