@@ -66,7 +66,11 @@ LIB_OBJS = $(filter-out $(OBJ_DIR)/main.o,$(OBJS))
 tests/test_hdd_cache: tests/test_hdd_cache.c $(LIB_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
 
-unit-test: tests/test_hdd_cache
+tests/test_ssd_ftl: tests/test_ssd_ftl.c $(LIB_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
+
+unit-test: tests/test_hdd_cache tests/test_ssd_ftl
 	@./tests/test_hdd_cache
+	@./tests/test_ssd_ftl
 
 .PHONY: all clean fclean re unit-test
