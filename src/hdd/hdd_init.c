@@ -84,21 +84,40 @@ int	hdd_write(t_hdd_state *hdd, int disk_fd, size_t lba, const void *buf)
 	return (0);
 }
 
+static void	hdd_print_stats_json(t_hdd_state *hdd, double hit_rate)
+{
+	printf("{\"device\":\"hdd\",");
+	printf("\"total_reads\":%zu,\"total_writes\":%zu,",
+		hdd->total_reads, hdd->total_writes);
+	printf("\"total_time_ms\":%.2f,",
+		hdd->total_time_ms);
+	printf("\"cache_hits\":%zu,\"cache_misses\":%zu,",
+		hdd->cache_hits, hdd->cache_misses);
+	printf("\"hit_rate_pct\":%.1f}\n", hit_rate);
+}
+
 void	hdd_print_stats(t_hdd_state *hdd)
 {
 	size_t	lookups;
 	double	hit_rate;
+	char	*fmt;
 
 	if (!hdd)
 		return ;
-	printf("[HDD] total_reads=%zu\n", hdd->total_reads);
-	printf("[HDD] total_writes=%zu\n", hdd->total_writes);
-	printf("[HDD] total_time_ms=%.2f\n", hdd->total_time_ms);
 	lookups = hdd->cache_hits + hdd->cache_misses;
 	if (lookups > 0)
 		hit_rate = (double)hdd->cache_hits * 100.0 / (double)lookups;
 	else
 		hit_rate = 0.0;
+	fmt = getenv("STOR3D_OUTPUT");
+	if (fmt && strcmp(fmt, "json") == 0)
+	{
+		hdd_print_stats_json(hdd, hit_rate);
+		return ;
+	}
+	printf("[HDD] total_reads=%zu total_writes=%zu\n",
+		hdd->total_reads, hdd->total_writes);
+	printf("[HDD] total_time_ms=%.2f\n", hdd->total_time_ms);
 	printf("[HDD] cache_hits=%zu cache_misses=%zu hit_rate=%.1f%%\n",
 		hdd->cache_hits, hdd->cache_misses, hit_rate);
 }

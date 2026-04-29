@@ -70,9 +70,22 @@ void	ssd_cleanup(t_ssd_state *ssd)
 		free(ssd);
 }
 
+static void	ssd_print_stats_json(t_ssd_state *ssd, double write_amp)
+{
+	printf("{\"device\":\"ssd\",");
+	printf("\"host_writes\":%zu,\"nand_writes\":%zu,",
+		ssd->host_writes, ssd->nand_writes);
+	printf("\"erases\":%zu,\"gc_count\":%zu,\"gc_moves\":%zu,",
+		ssd->erases, ssd->gc_count, ssd->gc_moves);
+	printf("\"free_pages\":%zu,\"max_erase_count\":%d,",
+		ssd->free_pages, ssd->max_erase_count);
+	printf("\"write_amplification\":%.2f}\n", write_amp);
+}
+
 void	ssd_print_stats(t_ssd_state *ssd)
 {
 	double	write_amp;
+	char	*fmt;
 
 	if (!ssd)
 		return ;
@@ -80,9 +93,15 @@ void	ssd_print_stats(t_ssd_state *ssd)
 		write_amp = (double)ssd->nand_writes / (double)ssd->host_writes;
 	else
 		write_amp = 0.0;
+	fmt = getenv("STOR3D_OUTPUT");
+	if (fmt && strcmp(fmt, "json") == 0)
+	{
+		ssd_print_stats_json(ssd, write_amp);
+		return ;
+	}
 	printf("[SSD] host_writes=%zu\n", ssd->host_writes);
 	printf("[SSD] nand_writes=%zu\n", ssd->nand_writes);
-	printf("[SSD] erases=%zu\n", ssd->erases);
-	printf("[SSD] gc_moves=%zu\n", ssd->gc_moves);
+	printf("[SSD] erases=%zu gc_count=%zu gc_moves=%zu\n",
+		ssd->erases, ssd->gc_count, ssd->gc_moves);
 	printf("[SSD] write_amp=%.2f\n", write_amp);
 }
