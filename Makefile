@@ -69,8 +69,12 @@ tests/test_hdd_cache: tests/test_hdd_cache.c $(LIB_OBJS)
 tests/test_ssd_ftl: tests/test_ssd_ftl.c $(LIB_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
 
-unit-test: tests/test_hdd_cache tests/test_ssd_ftl
+tests/test_ssd_writes: tests/test_ssd_writes.c $(LIB_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
+
+unit-test: tests/test_hdd_cache tests/test_ssd_ftl tests/test_ssd_writes
 	@./tests/test_hdd_cache
 	@./tests/test_ssd_ftl
+	@./tests/test_ssd_writes
 
 .PHONY: all clean fclean re unit-test

@@ -5,6 +5,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define ASSERT_MSG(cond, msg) do { \
+	if (!(cond)) { fprintf(stderr, "ASSERT FAILED: %s (%s:%d)\n", msg, __FILE__, __LINE__); abort(); } \
+} while (0)
+
 static int make_disk(const char *path)
 {
 	int fd;
