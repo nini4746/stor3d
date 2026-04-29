@@ -30,6 +30,7 @@ SRCS		= $(SRC_DIR)/main.c \
 			  $(SRC_DIR)/hdd/hdd_init.c \
 			  $(SRC_DIR)/hdd/hdd_helpers.c \
 			  $(SRC_DIR)/hdd/hdd_cache.c \
+			  $(SRC_DIR)/hdd/cache_policies.c \
 			  $(SRC_DIR)/hdd/hdd_io.c \
 			  $(SRC_DIR)/ssd/ssd_init.c \
 			  $(SRC_DIR)/ssd/ssd_ftl.c \
@@ -72,9 +73,13 @@ tests/test_ssd_ftl: tests/test_ssd_ftl.c $(LIB_OBJS)
 tests/test_ssd_writes: tests/test_ssd_writes.c $(LIB_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
 
-unit-test: tests/test_hdd_cache tests/test_ssd_ftl tests/test_ssd_writes
+tests/test_cache_policy: tests/test_cache_policy.c $(LIB_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $< $(LIB_OBJS)
+
+unit-test: tests/test_hdd_cache tests/test_ssd_ftl tests/test_ssd_writes tests/test_cache_policy
 	@./tests/test_hdd_cache
 	@./tests/test_ssd_ftl
 	@./tests/test_ssd_writes
+	@./tests/test_cache_policy
 
 .PHONY: all clean fclean re unit-test

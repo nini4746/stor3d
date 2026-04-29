@@ -37,3 +37,4 @@ obj/
 *.o
 tests/test_ssd_ftl
 tests/test_ssd_writes
+tests/test_cache_policy
