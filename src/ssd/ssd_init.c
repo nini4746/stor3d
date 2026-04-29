@@ -82,6 +82,25 @@ static void	ssd_print_stats_json(t_ssd_state *ssd, double write_amp)
 	printf("\"write_amplification\":%.2f}\n", write_amp);
 }
 
+static void	ssd_print_stats_prom(t_ssd_state *ssd, double write_amp)
+{
+	printf("# HELP stor3d_ssd_host_writes Host write requests\n");
+	printf("# TYPE stor3d_ssd_host_writes counter\n");
+	printf("stor3d_ssd_host_writes %zu\n", ssd->host_writes);
+	printf("# TYPE stor3d_ssd_nand_writes counter\n");
+	printf("stor3d_ssd_nand_writes %zu\n", ssd->nand_writes);
+	printf("# TYPE stor3d_ssd_erases counter\n");
+	printf("stor3d_ssd_erases %zu\n", ssd->erases);
+	printf("# TYPE stor3d_ssd_gc_count counter\n");
+	printf("stor3d_ssd_gc_count %zu\n", ssd->gc_count);
+	printf("# TYPE stor3d_ssd_gc_moves counter\n");
+	printf("stor3d_ssd_gc_moves %zu\n", ssd->gc_moves);
+	printf("# TYPE stor3d_ssd_free_pages gauge\n");
+	printf("stor3d_ssd_free_pages %zu\n", ssd->free_pages);
+	printf("# TYPE stor3d_ssd_write_amplification gauge\n");
+	printf("stor3d_ssd_write_amplification %.4f\n", write_amp);
+}
+
 void	ssd_print_stats(t_ssd_state *ssd)
 {
 	double	write_amp;
@@ -97,6 +116,11 @@ void	ssd_print_stats(t_ssd_state *ssd)
 	if (fmt && strcmp(fmt, "json") == 0)
 	{
 		ssd_print_stats_json(ssd, write_amp);
+		return ;
+	}
+	if (fmt && strcmp(fmt, "prometheus") == 0)
+	{
+		ssd_print_stats_prom(ssd, write_amp);
 		return ;
 	}
 	printf("[SSD] host_writes=%zu\n", ssd->host_writes);

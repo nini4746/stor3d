@@ -96,6 +96,22 @@ static void	hdd_print_stats_json(t_hdd_state *hdd, double hit_rate)
 	printf("\"hit_rate_pct\":%.1f}\n", hit_rate);
 }
 
+static void	hdd_print_stats_prom(t_hdd_state *hdd, double hit_rate)
+{
+	printf("# TYPE stor3d_hdd_reads counter\n");
+	printf("stor3d_hdd_reads %zu\n", hdd->total_reads);
+	printf("# TYPE stor3d_hdd_writes counter\n");
+	printf("stor3d_hdd_writes %zu\n", hdd->total_writes);
+	printf("# TYPE stor3d_hdd_time_ms gauge\n");
+	printf("stor3d_hdd_time_ms %.4f\n", hdd->total_time_ms);
+	printf("# TYPE stor3d_hdd_cache_hits counter\n");
+	printf("stor3d_hdd_cache_hits %zu\n", hdd->cache_hits);
+	printf("# TYPE stor3d_hdd_cache_misses counter\n");
+	printf("stor3d_hdd_cache_misses %zu\n", hdd->cache_misses);
+	printf("# TYPE stor3d_hdd_cache_hit_rate gauge\n");
+	printf("stor3d_hdd_cache_hit_rate %.4f\n", hit_rate / 100.0);
+}
+
 void	hdd_print_stats(t_hdd_state *hdd)
 {
 	size_t	lookups;
@@ -113,6 +129,11 @@ void	hdd_print_stats(t_hdd_state *hdd)
 	if (fmt && strcmp(fmt, "json") == 0)
 	{
 		hdd_print_stats_json(hdd, hit_rate);
+		return ;
+	}
+	if (fmt && strcmp(fmt, "prometheus") == 0)
+	{
+		hdd_print_stats_prom(hdd, hit_rate);
 		return ;
 	}
 	printf("[HDD] total_reads=%zu total_writes=%zu\n",
