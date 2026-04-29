@@ -71,6 +71,7 @@ void	hdd_cache_insert(t_hdd_state *hdd, size_t lba)
 	}
 	lru_idx = find_lru_entry(hdd);
 	hdd->cache[lru_idx].lba = lba;
+	hdd->cache[lru_idx].valid = 1;
 	hdd->cache[lru_idx].last_access = hdd->cache_clock++;
 }
 

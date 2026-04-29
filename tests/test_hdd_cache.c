@@ -98,11 +98,33 @@ int main(void)
 		failed = 1;
 	}
 
-	close(fd);
+	// regression: LRU eviction must mark new entry valid (was a real bug — stayed valid=0)
+	{
+		t_hdd_state *h2 = NULL;
+		int fd2;
+		hdd_init(&h2);
+		fd2 = open("/tmp/stor3d_test_disk.img", O_RDWR | O_CREAT | O_TRUNC, 0644);
+		if (fd2 >= 0)
+		{
+			char zero[BLOCK_SIZE]; memset(zero, 0, BLOCK_SIZE);
+			for (size_t k = 0; k < BLOCK_COUNT; k++) write(fd2, zero, BLOCK_SIZE);
+			lseek(fd2, 0, SEEK_SET);
+			// fill cache + force LRU eviction by reading HDD_CACHE_SIZE+1 distinct lbas
+			for (size_t k = 0; k <= HDD_CACHE_SIZE; k++) hdd_read(h2, fd2, k, zero);
+			// every cache slot must now be valid (after eviction filled them all)
+			int all_valid = 1;
+			for (size_t k = 0; k < HDD_CACHE_SIZE; k++)
+				if (!h2->cache[k].valid) { all_valid = 0; break; }
+			ASSERT_MSG(all_valid, "after LRU eviction every cache entry must be valid");
+			close(fd2);
+		}
+		hdd_cleanup(h2);
+	}
+
 	unlink("/tmp/stor3d_test_disk.img");
 	hdd_cleanup(hdd);
 
 	if (!failed)
-		printf("PASS: hdd cache miss/hit/invalidate (4 cases)\n");
+		printf("PASS: hdd cache miss/hit/invalidate/lru-valid (5 cases)\n");
 	return (failed);
 }
