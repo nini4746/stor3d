@@ -165,10 +165,10 @@ stor3d/
 - [x] 기본 구조 및 검증
 - [x] Block Device Interface
 - [x] v2 명세 확정
-- [ ] HDD CHS 모델
-- [ ] SSD FTL 구현
-- [ ] Script Parser
-- [ ] FS_LITE
+- [x] HDD CHS 모델
+- [x] SSD FTL 구현
+- [x] Script Parser
+- [x] FS_LITE
 
 ---
 
