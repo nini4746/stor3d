@@ -12,13 +12,22 @@
 
 #include "../../include/parser.h"
 
+/* True if only whitespace / end-of-line remains after the last expected token. */
+static int	no_trailing_tokens(char *line)
+{
+	while (*line && *line != ' ' && *line != '\t' && *line != '\n')
+		line++;
+	line = skip_whitespace(line);
+	return (*line == '\0' || *line == '\n');
+}
+
 int	execute_read(t_context *ctx, char *line)
 {
 	long	lba;
 	char	buf[BLOCK_SIZE];
 
 	line = skip_whitespace(line + 1);
-	if (parse_number(line, &lba))
+	if (parse_number(line, &lba) || !no_trailing_tokens(line))
 	{
 		perror("invalid script line");
 		return (1);
@@ -43,7 +52,8 @@ int	execute_write(t_context *ctx, char *line)
 	while (*line && *line != ' ' && *line != '\t')
 		line++;
 	line = skip_whitespace(line);
-	if (parse_number(line, &byte_val) || byte_val < 0 || byte_val > 255)
+	if (parse_number(line, &byte_val) || byte_val < 0 || byte_val > 255
+		|| !no_trailing_tokens(line))
 	{
 		perror("invalid script line");
 		return (1);

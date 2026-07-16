@@ -87,6 +87,10 @@ char	*read_script_to_buffer(int fd)
 		total_size += bytes_read;
 		bytes_read = read(fd, temp, BUFFER_SIZE);
 	}
+	if (bytes_read < 0)
+		return (free(buffer), NULL);
+	if (!buffer && (buffer = malloc(1)))
+		buffer[0] = '\0';
 	return (buffer);
 }
 
