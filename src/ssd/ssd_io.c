@@ -69,6 +69,7 @@ int	ssd_read(t_ssd_state *ssd, int disk_fd, size_t lba, void *buf)
 		perror("read failed");
 		return (1);
 	}
+	ssd->total_time_ms += SSD_READ_COST;
 	return (0);
 }
 
@@ -92,5 +93,6 @@ int	ssd_write(t_ssd_state *ssd, int disk_fd, size_t lba, const void *buf)
 	ssd->ftl_map[lba].valid = 1;
 	ssd->host_writes++;
 	ssd->nand_writes++;
+	ssd->total_time_ms += SSD_WRITE_COST;
 	return (0);
 }

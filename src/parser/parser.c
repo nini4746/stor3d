@@ -12,15 +12,20 @@
 
 #include "../../include/parser.h"
 
+static int	is_sep(char c)
+{
+	return (c == ' ' || c == '\t');
+}
+
 static int	parse_file_command(t_context *ctx, char *line)
 {
-	if (strncmp(line, "CF", 2) == 0)
+	if (strncmp(line, "CF", 2) == 0 && is_sep(line[2]))
 		return (execute_create_file(ctx, line));
-	else if (strncmp(line, "WF", 2) == 0)
+	else if (strncmp(line, "WF", 2) == 0 && is_sep(line[2]))
 		return (execute_write_file(ctx, line));
-	else if (strncmp(line, "RF", 2) == 0)
+	else if (strncmp(line, "RF", 2) == 0 && is_sep(line[2]))
 		return (execute_read_file(ctx, line));
-	else if (strncmp(line, "CHK", 3) == 0)
+	else if (strncmp(line, "CHK", 3) == 0 && is_sep(line[3]))
 		return (execute_checksum(ctx, line));
 	else
 	{
@@ -38,6 +43,9 @@ int	parse_line(t_context *ctx, char *line)
 		return (execute_read(ctx, line));
 	else if (*line == 'W' && (line[1] == ' ' || line[1] == '\t'))
 		return (execute_write(ctx, line));
+	else if (strncmp(line, "TRIMF", 5) == 0
+		&& (line[5] == ' ' || line[5] == '\t'))
+		return (execute_trim_file(ctx, line));
 	else if (*line == 'C' || *line == 'W' || *line == 'R')
 		return (parse_file_command(ctx, line));
 	else

@@ -23,11 +23,12 @@ int	hdd_lba_to_chs(size_t lba, int *cylinder, int *head, int *sector)
 	return (0);
 }
 
+/* Spec v2 §9.2: zone 0 = cylinders 0-1, zone 1 = cylinder 2, zone 2 = 3. */
 int	hdd_get_zone(int cylinder)
 {
-	if (cylinder < HDD_CYLINDERS / 3)
+	if (cylinder <= 1)
 		return (0);
-	else if (cylinder < (HDD_CYLINDERS * 2) / 3)
+	else if (cylinder == 2)
 		return (1);
 	else
 		return (2);
@@ -60,7 +61,8 @@ double	hdd_calculate_seek_cost(t_hdd_state *hdd, int cylinder, int head)
 		}
 		if (head != hdd->prev_head)
 		{
-			cost += HDD_HEAD_SWITCH_COST;
+			cost += (double)abs(head - hdd->prev_head)
+				* HDD_HEAD_SWITCH_COST;
 			hdd->head_switches++;
 		}
 	}
@@ -72,7 +74,7 @@ double	hdd_calc_read_cost(t_hdd_state *hdd, int cyl, int head, int zone)
 	double	cost;
 
 	cost = hdd_calculate_seek_cost(hdd, cyl, head);
-	cost += HDD_ROTATION_TIME / 2.0;
+	cost += HDD_ROTATION_TIME;
 	cost += hdd_get_transfer_time(zone);
 	return (cost);
 }

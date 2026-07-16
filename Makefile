@@ -26,6 +26,7 @@ SRCS		= $(SRC_DIR)/main.c \
 			  $(SRC_DIR)/parser/parser.c \
 			  $(SRC_DIR)/parser/commands.c \
 			  $(SRC_DIR)/parser/file_commands.c \
+			  $(SRC_DIR)/parser/trim_command.c \
 			  $(SRC_DIR)/parser/utils.c \
 			  $(SRC_DIR)/hdd/hdd_init.c \
 			  $(SRC_DIR)/hdd/hdd_helpers.c \

@@ -66,6 +66,14 @@ typedef struct s_ssd_state
 	double			total_time_ms;
 }	t_ssd_state;
 
+// GC batch: valid pages of the victim block buffered in RAM during erase
+typedef struct s_gc_batch
+{
+	char	*data;
+	size_t	lbas[SSD_PAGES_PER_BLOCK];
+	int		count;
+}	t_gc_batch;
+
 int		ssd_init(t_ssd_state **ssd);
 void	ssd_cleanup(t_ssd_state *ssd);
 int		ssd_read(t_ssd_state *ssd, int disk_fd, size_t lba, void *buf);
@@ -83,10 +91,11 @@ int		ssd_get_page_index(size_t ppa);
 int		ssd_gc_needed(t_ssd_state *ssd);
 int		ssd_run_gc(t_ssd_state *ssd, int disk_fd);
 int		ssd_select_victim_block(t_ssd_state *ssd);
-size_t	ssd_find_lba_for_ppa(t_ssd_state *ssd, size_t ppa);
-int		ssd_gc_move_one_page(t_ssd_state *ssd, size_t old_ppa, int disk_fd);
+int		ssd_gc_collect(t_ssd_state *ssd, int victim, int disk_fd,
+			t_gc_batch *batch);
 void	ssd_gc_erase_block(t_ssd_state *ssd, int victim);
-int		ssd_gc_move_valid_pages(t_ssd_state *ssd, int victim, int disk_fd);
+int		ssd_gc_writeback(t_ssd_state *ssd, int disk_fd, int victim,
+			t_gc_batch *batch);
 int		ssd_trim_lba(t_ssd_state *ssd, size_t lba);
 
 #endif

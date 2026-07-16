@@ -12,13 +12,27 @@
 
 #include "../../include/stor3d.h"
 
+static int	valid_name_char(char c)
+{
+	return (isalnum((unsigned char)c) || c == '.' || c == '_' || c == '-');
+}
+
 static int	validate_filename(t_fs_lite *fs, const char *name, size_t *len)
 {
+	size_t	i;
+
 	if (fs_find_file(fs, name) >= 0)
 		return (perror("file already exists"), 1);
 	*len = strnlen(name, FS_MAX_FILENAME);
 	if (*len == 0 || *len >= FS_MAX_FILENAME)
 		return (perror("invalid filename"), 1);
+	i = 0;
+	while (i < *len)
+	{
+		if (!valid_name_char(name[i]))
+			return (perror("invalid filename"), 1);
+		i++;
+	}
 	return (0);
 }
 

@@ -370,8 +370,8 @@ R 2
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    reads=$(echo "$output" | grep -oP '\[HDD\] total_reads=\K[0-9]+')
-    writes=$(echo "$output" | grep -oP '\[HDD\] total_writes=\K[0-9]+')
+    reads=$(echo "$output" | sed -n 's/.*\[HDD\] total_reads=\([0-9]*\).*/\1/p')
+    writes=$(echo "$output" | sed -n 's/.*\[HDD\] total_writes=\([0-9]*\).*/\1/p')
 
     [ "$reads" -eq 3 ] && [ "$writes" -eq 2 ]
     print_test "HDD correct read/write counts (R:3, W:2)" $?
@@ -383,10 +383,11 @@ W 1 0xBB
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    time_ms=$(echo "$output" | grep -oP '\[HDD\] total_time_ms=\K[0-9.]+')
+    time_ms=$(echo "$output" | sed -n 's/.*\[HDD\] total_time_ms=\([0-9.]*\).*/\1/p')
 
-    compare_float "$time_ms" "4.25" "0.01"
-    print_test "HDD sequential write timing (expected: 4.25ms)" $?
+    # v2 spec: W0 = rot 4.17 + xfer 0.08 = 4.25; W1 same cyl/head = 4.25
+    compare_float "$time_ms" "8.50" "0.01"
+    print_test "HDD sequential write timing (expected: 8.50ms)" $?
 
     # Test 3: Random access 시간 계산
     cat > script.txt << 'EOF'
@@ -395,10 +396,11 @@ W 1000 0xBB
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    time_ms=$(echo "$output" | grep -oP '\[HDD\] total_time_ms=\K[0-9.]+')
+    time_ms=$(echo "$output" | sed -n 's/.*\[HDD\] total_time_ms=\([0-9.]*\).*/\1/p')
 
-    compare_float "$time_ms" "54.2" "0.01"
-    print_test "HDD random write timing (expected: 54.2ms)" $?
+    # v2 spec: W0 = 4.25; W1000 = head-switch |3-0|*0.1 + 4.17 + 0.08 = 4.55
+    compare_float "$time_ms" "8.80" "0.01"
+    print_test "HDD random write timing (expected: 8.80ms)" $?
 
     # Test 4: Mixed read/write
     cat > script.txt << 'EOF'
@@ -409,8 +411,8 @@ R 30
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    reads=$(echo "$output" | grep -oP '\[HDD\] total_reads=\K[0-9]+')
-    writes=$(echo "$output" | grep -oP '\[HDD\] total_writes=\K[0-9]+')
+    reads=$(echo "$output" | sed -n 's/.*\[HDD\] total_reads=\([0-9]*\).*/\1/p')
+    writes=$(echo "$output" | sed -n 's/.*\[HDD\] total_writes=\([0-9]*\).*/\1/p')
 
     [ "$reads" -eq 2 ] && [ "$writes" -eq 2 ]
     print_test "HDD mixed operations count (R:2, W:2)" $?
@@ -432,8 +434,8 @@ W 2 0xCC
 EOF
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    host_writes=$(echo "$output" | grep -oP '\[SSD\] host_writes=\K[0-9]+')
-    nand_writes=$(echo "$output" | grep -oP '\[SSD\] nand_writes=\K[0-9]+')
+    host_writes=$(echo "$output" | sed -n 's/.*\[SSD\] host_writes=\([0-9]*\).*/\1/p')
+    nand_writes=$(echo "$output" | sed -n 's/.*\[SSD\] nand_writes=\([0-9]*\).*/\1/p')
 
     [ "$host_writes" -eq 3 ]
     print_test "SSD host_writes count (expected: 3)" $?
@@ -450,8 +452,8 @@ W 0 0xCC
 EOF
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    host_writes=$(echo "$output" | grep -oP '\[SSD\] host_writes=\K[0-9]+')
-    nand_writes=$(echo "$output" | grep -oP '\[SSD\] nand_writes=\K[0-9]+')
+    host_writes=$(echo "$output" | sed -n 's/.*\[SSD\] host_writes=\([0-9]*\).*/\1/p')
+    nand_writes=$(echo "$output" | sed -n 's/.*\[SSD\] nand_writes=\([0-9]*\).*/\1/p')
 
     [ "$host_writes" -eq 3 ]
     print_test "SSD overwrite host_writes (expected: 3)" $?
@@ -461,7 +463,7 @@ EOF
     print_test "SSD overwrite nand_writes >= host_writes" $?
 
     # Test 3: Write amplification 계산
-    write_amp=$(echo "$output" | grep -oP '\[SSD\] write_amp=\K[0-9.]+')
+    write_amp=$(echo "$output" | sed -n 's/.*\[SSD\] write_amp=\([0-9.]*\).*/\1/p')
     expected_amp=$(echo "scale=2; $nand_writes / $host_writes" | bc)
 
     compare_float "$write_amp" "$expected_amp" "0.01"
@@ -474,7 +476,7 @@ W 1 0xBB
 EOF
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    erases=$(echo "$output" | grep -oP '\[SSD\] erases=\K[0-9]+')
+    erases=$(echo "$output" | sed -n 's/.*\[SSD\] erases=\([0-9]*\).*/\1/p')
 
     [ "$erases" -eq 0 ]
     print_test "SSD no erases for simple writes" $?
@@ -488,23 +490,21 @@ test_ssd_garbage_collection() {
 
     dd if=/dev/zero of=disk.img bs=4096 count=8192 2>/dev/null
 
-    # GC 트리거: 같은 블록에 많은 overwrite 수행
-    cat > script.txt << 'EOF'
-# Write to first 200 pages
-EOF
-
-    for i in {0..199}; do
+    # v2 spec §10.6: GC triggers when free pages < 82. Fill every page,
+    # then overwrite to create invalid pages GC must reclaim.
+    echo "# Fill all pages then overwrite" > script.txt
+    for i in {0..8191}; do
         echo "W $i 0xAA" >> script.txt
     done
 
-    # Overwrite first 150 pages (triggers GC)
+    # Overwrite first 150 pages (free pages exhausted -> GC must run)
     for i in {0..149}; do
         echo "W $i 0xBB" >> script.txt
     done
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    erases=$(echo "$output" | grep -oP '\[SSD\] erases=\K[0-9]+')
-    gc_moves=$(echo "$output" | grep -oP '\[SSD\] gc_moves=\K[0-9]+')
+    erases=$(echo "$output" | sed -n 's/.*\[SSD\] erases=\([0-9]*\).*/\1/p')
+    gc_moves=$(echo "$output" | sed -n 's/.*\[SSD\] gc_moves=\([0-9]*\).*/\1/p')
 
     # GC가 발생했다면 erase > 0
     [ "$erases" -gt 0 ]
@@ -651,33 +651,46 @@ test_hdd_performance_patterns() {
 
     dd if=/dev/zero of=disk.img bs=4096 count=8192 2>/dev/null
 
-    # Sequential writes
+    # v2 spec: writes always pay rotation, so the sequential advantage shows
+    # on reads via the 8-block read-ahead cache (§9.4). Sequential reads hit
+    # the prefetched cache (transfer only); random reads pay full cost.
     cat > script.txt << 'EOF'
-W 0 0xAA
-W 1 0xAA
-W 2 0xAA
-W 3 0xAA
-W 4 0xAA
+R 0
+R 1
+R 2
+R 3
+R 4
+R 5
+R 6
+R 7
+R 8
+R 9
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    seq_time=$(echo "$output" | grep -oP '\[HDD\] total_time_ms=\K[0-9.]+')
+    seq_time=$(echo "$output" | sed -n 's/.*\[HDD\] total_time_ms=\([0-9.]*\).*/\1/p')
 
-    # Random writes
+    # Random reads
     cat > script.txt << 'EOF'
-W 0 0xAA
-W 1000 0xAA
-W 2000 0xAA
-W 4000 0xAA
-W 100 0xAA
+R 0
+R 1000
+R 2000
+R 4000
+R 100
+R 3000
+R 500
+R 1500
+R 2500
+R 3500
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    rand_time=$(echo "$output" | grep -oP '\[HDD\] total_time_ms=\K[0-9.]+')
+    rand_time=$(echo "$output" | sed -n 's/.*\[HDD\] total_time_ms=\([0-9.]*\).*/\1/p')
 
     # Random should be significantly slower than sequential
-    awk -v seq="$seq_time" -v rand="$rand_time" 'BEGIN {
-        if (rand > seq * 2) exit 0;
+    # (note: "rand" is a reserved awk built-in, so use rnd)
+    awk -v seq="$seq_time" -v rnd="$rand_time" 'BEGIN {
+        if (rnd > seq * 2) exit 0;
         else exit 1;
     }'
     print_test "HDD random access slower than sequential" $?
@@ -701,22 +714,24 @@ W 4 0xEE
 EOF
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    write_amp=$(echo "$output" | grep -oP '\[SSD\] write_amp=\K[0-9.]+')
+    write_amp=$(echo "$output" | sed -n 's/.*\[SSD\] write_amp=\([0-9.]*\).*/\1/p')
 
     compare_float "$write_amp" "1.0" "0.01"
     print_test "SSD write_amp = 1.0 (no overwrite)" $?
 
-    # With overwrite - write_amp should be > 1.0
-    cat > script.txt << 'EOF'
-W 0 0xAA
-W 0 0xBB
-W 0 0xCC
-W 1 0xDD
-W 1 0xEE
-EOF
+    # With overwrite under capacity pressure - write_amp should be > 1.0
+    # (v2 spec: GC only runs when free pages < 82, so fill the disk first;
+    # GC moves then add nand_writes beyond host_writes)
+    echo "# Fill then overwrite" > script.txt
+    for i in {0..8191}; do
+        echo "W $i 0xAA" >> script.txt
+    done
+    for i in {0..4}; do
+        echo "W $i 0xBB" >> script.txt
+    done
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    write_amp=$(echo "$output" | grep -oP '\[SSD\] write_amp=\K[0-9.]+')
+    write_amp=$(echo "$output" | sed -n 's/.*\[SSD\] write_amp=\([0-9.]*\).*/\1/p')
 
     awk -v amp="$write_amp" 'BEGIN {
         if (amp > 1.0) exit 0;
@@ -738,8 +753,9 @@ test_disk_full_scenario() {
 CF file1
 EOF
 
-    # 거의 전체 디스크를 채우려고 시도
-    echo "WF file1 0 32768000 0xAA" >> script.txt
+    # 전체 디스크보다 큰 파일 요구 (32768000 bytes = 8000 blocks은 8191개의
+    # 가용 블록에 들어가므로, 실제로 넘치는 크기로 요청해야 함)
+    echo "WF file1 0 33500000 0xAA" >> script.txt
     echo "CF file2" >> script.txt
     echo "WF file2 0 100000 0xBB" >> script.txt
 
@@ -763,18 +779,22 @@ test_evil_stress_test() {
 
     dd if=/dev/zero of=disk.img bs=4096 count=8192 2>/dev/null
 
-    # 서브테스트 1: 같은 LBA 극한 overwrite
+    # 서브테스트 1: 같은 LBA 극한 overwrite (v2 spec: 용량 압박 하에서만
+    # GC가 돌므로 디스크를 채운 뒤 반복 overwrite -> GC 이동이 폭증)
     echo "# SSD GC stress test" > script.txt
-    for i in {1..1000}; do
+    for i in {0..8191}; do
+        echo "W $i 0xAA" >> script.txt
+    done
+    for i in {1..100}; do
         echo "W 0 0xAA" >> script.txt
     done
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
     [ $? -eq 0 ]
-    print_test "SSD survives 1000 overwrites on same LBA" $?
+    print_test "SSD survives extreme overwrite at full capacity" $?
 
     # Write amplification이 엄청 높아야 함
-    write_amp=$(echo "$output" | grep -oP '\[SSD\] write_amp=\K[0-9.]+')
+    write_amp=$(echo "$output" | sed -n 's/.*\[SSD\] write_amp=\([0-9.]*\).*/\1/p')
     awk -v amp="$write_amp" 'BEGIN {
         if (amp > 1.5) exit 0;
         else exit 1;
@@ -840,16 +860,20 @@ EOF
     [ $? -ne 0 ]
     print_test "Reject extremely long filename (1000+ chars)" $?
 
-    # 서브테스트 5: Fragmentation
+    # 서브테스트 5: Fragmentation (spec: 최대 파일 수 64 - 60개로 상한 내 검증)
     echo "# Fragmentation test" > script.txt
-    for i in {0..100}; do
+    for i in {0..59}; do
         echo "CF file$i" >> script.txt
         echo "WF file$i 0 100 0xAA" >> script.txt
+    done
+    # 각 파일을 나중에 다시 키워 extent가 흩어지게 함 (진짜 단편화)
+    for i in {0..59}; do
+        echo "WF file$i 100 8000 0xBB" >> script.txt
     done
 
     $PROGRAM hdd disk.img script.txt >/dev/null 2>&1
     [ $? -eq 0 ]
-    print_test "Handle heavy fragmentation (100 files)" $?
+    print_test "Handle heavy fragmentation (60 files, split extents)" $?
 
     # 서브테스트 6: 오프셋/길이 경계
     cat > script.txt << 'EOF'
@@ -1140,19 +1164,20 @@ EOF
     [ $? -eq 0 ]
     print_test "SSD handle page 255->256 boundary" $?
 
-    # 블록 0의 전체를 invalid로
-    echo "# Fill first block" > script.txt
-    for i in {0..255}; do
+    # 블록 하나 분량(256 LBA)을 전부 invalid로 만들어 GC 유도
+    # (v2 spec: free < 82 pages에서만 GC가 돌므로 디스크를 먼저 채움)
+    echo "# Fill all pages" > script.txt
+    for i in {0..8191}; do
         echo "W $i 0xAA" >> script.txt
     done
 
-    # 전부 overwrite
+    # 첫 블록 분량 전부 overwrite
     for i in {0..255}; do
         echo "W $i 0xBB" >> script.txt
     done
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
-    erases=$(echo "$output" | grep -oP '\[SSD\] erases=\K[0-9]+')
+    erases=$(echo "$output" | sed -n 's/.*\[SSD\] erases=\([0-9]*\).*/\1/p')
 
     [ "$erases" -gt 0 ]
     print_test "SSD GC triggers on full block invalidation" $?
@@ -1205,9 +1230,10 @@ W 8191 0xDD
 EOF
 
     output=$($PROGRAM hdd disk.img script.txt 2>&1)
-    time_ms=$(echo "$output" | grep -oP '\[HDD\] total_time_ms=\K[0-9.]+')
+    time_ms=$(echo "$output" | sed -n 's/.*\[HDD\] total_time_ms=\([0-9.]*\).*/\1/p')
 
-    compare_float "$time_ms" "1237.05" "0.1"
+    # v2 spec: 4.25 + 3 * (seek |1-0|*0.5 + head |15-0|*0.1 + 4.17 + 0.08)
+    compare_float "$time_ms" "23.00" "0.1"
     print_test "HDD worst-case seek pattern timing" $?
 
     # 역순 접근
@@ -1401,11 +1427,10 @@ test_resource_exhaustion_hell() {
     [ $? -eq 0 ]
     print_test "SSD use all 8192 pages" $?
 
-    # SSD 모든 페이지 사용 후 추가 쓰기
-    for i in {0..8191}; do
-        echo "W $i 0xAA" >> script.txt
+    # SSD 모든 페이지 사용 후 추가 overwrite (GC가 invalid를 회수해야 성공)
+    for i in {0..99}; do
+        echo "W $i 0xBB" >> script.txt
     done
-    echo "W 0 0xBB" >> script.txt
 
     output=$($PROGRAM ssd disk.img script.txt 2>&1)
     result=$?

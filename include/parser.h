@@ -29,6 +29,7 @@ int		execute_create_file(t_context *ctx, char *line);
 int		execute_write_file(t_context *ctx, char *line);
 int		execute_read_file(t_context *ctx, char *line);
 int		execute_checksum(t_context *ctx, char *line);
+int		execute_trim_file(t_context *ctx, char *line);
 
 // Parser functions
 int		parse_line(t_context *ctx, char *line);

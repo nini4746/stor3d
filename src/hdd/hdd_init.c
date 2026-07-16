@@ -33,21 +33,46 @@ void	hdd_cleanup(t_hdd_state *hdd)
 		free(hdd);
 }
 
+/* Spec v2 §9.4: 3+ consecutive LBAs -> prefetch next 8 blocks. */
+static void	hdd_track_sequential(t_hdd_state *hdd, size_t lba)
+{
+	if (hdd->last_sequential_lba + 1 == lba)
+		hdd->sequential_count++;
+	else
+		hdd->sequential_count = 1;
+	hdd->last_sequential_lba = lba;
+}
+
+static void	hdd_prefetch(t_hdd_state *hdd, size_t lba)
+{
+	size_t	i;
+
+	i = 1;
+	while (i <= HDD_CACHE_SIZE && lba + i < BLOCK_COUNT)
+	{
+		hdd_cache_insert(hdd, lba + i);
+		i++;
+	}
+}
+
 int	hdd_read(t_hdd_state *hdd, int disk_fd, size_t lba, void *buf)
 {
 	int		cylinder;
 	int		head;
 	int		sector;
 
+	hdd_lba_to_chs(lba, &cylinder, &head, &sector);
+	hdd_track_sequential(hdd, lba);
 	if (hdd_cache_lookup(hdd, lba))
 	{
 		if (hdd_do_physical_read(disk_fd, lba, buf))
 			return (1);
-		hdd->total_time_ms += hdd_get_transfer_time(0) / 4.0;
+		hdd->total_time_ms += hdd_get_transfer_time(hdd_get_zone(cylinder));
 		hdd->total_reads++;
+		if (hdd->sequential_count >= 3)
+			hdd_prefetch(hdd, lba);
 		return (0);
 	}
-	hdd_lba_to_chs(lba, &cylinder, &head, &sector);
 	hdd->total_time_ms += hdd_calc_read_cost(hdd, cylinder, head,
 			hdd_get_zone(cylinder));
 	if (hdd_do_physical_read(disk_fd, lba, buf))
@@ -57,6 +82,8 @@ int	hdd_read(t_hdd_state *hdd, int disk_fd, size_t lba, void *buf)
 	hdd->prev_lba = lba;
 	hdd->total_reads++;
 	hdd_cache_insert(hdd, lba);
+	if (hdd->sequential_count >= 3)
+		hdd_prefetch(hdd, lba);
 	return (0);
 }
 
@@ -70,7 +97,7 @@ int	hdd_write(t_hdd_state *hdd, int disk_fd, size_t lba, const void *buf)
 
 	hdd_lba_to_chs(lba, &cylinder, &head, &sector);
 	cost = hdd_calculate_seek_cost(hdd, cylinder, head);
-	cost += HDD_ROTATION_TIME / 2.0;
+	cost += HDD_ROTATION_TIME;
 	zone = hdd_get_zone(cylinder);
 	cost += hdd_get_transfer_time(zone);
 	hdd->total_time_ms += cost;
@@ -136,9 +163,11 @@ void	hdd_print_stats(t_hdd_state *hdd)
 		hdd_print_stats_prom(hdd, hit_rate);
 		return ;
 	}
-	printf("[HDD] total_reads=%zu total_writes=%zu\n",
-		hdd->total_reads, hdd->total_writes);
+	printf("[HDD] total_reads=%zu\n", hdd->total_reads);
+	printf("[HDD] total_writes=%zu\n", hdd->total_writes);
+	printf("[HDD] cylinder_seeks=%zu\n", hdd->cylinder_seeks);
+	printf("[HDD] head_switches=%zu\n", hdd->head_switches);
+	printf("[HDD] cache_hits=%zu\n", hdd->cache_hits);
+	printf("[HDD] cache_misses=%zu\n", hdd->cache_misses);
 	printf("[HDD] total_time_ms=%.2f\n", hdd->total_time_ms);
-	printf("[HDD] cache_hits=%zu cache_misses=%zu hit_rate=%.1f%%\n",
-		hdd->cache_hits, hdd->cache_misses, hit_rate);
 }

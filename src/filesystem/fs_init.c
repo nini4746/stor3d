@@ -26,6 +26,7 @@ static void	init_file_table(t_fs_lite *fs)
 	}
 }
 
+/* Block 0 is reserved for the metadata table (spec v2 §XI). */
 static void	init_free_blocks(t_fs_lite *fs)
 {
 	int	i;
@@ -36,6 +37,7 @@ static void	init_free_blocks(t_fs_lite *fs)
 		fs->free_blocks[i] = 0;
 		i++;
 	}
+	fs->free_blocks[0] = 1;
 }
 
 int	fs_init(t_fs_lite **fs)

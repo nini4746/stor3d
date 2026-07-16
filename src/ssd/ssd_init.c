@@ -101,6 +101,23 @@ static void	ssd_print_stats_prom(t_ssd_state *ssd, double write_amp)
 	printf("stor3d_ssd_write_amplification %.4f\n", write_amp);
 }
 
+static void	ssd_refresh_erase_bounds(t_ssd_state *ssd)
+{
+	int	i;
+
+	ssd->min_erase_count = ssd->blocks[0].erase_count;
+	ssd->max_erase_count = ssd->blocks[0].erase_count;
+	i = 1;
+	while (i < SSD_ERASE_BLOCK_COUNT)
+	{
+		if (ssd->blocks[i].erase_count < ssd->min_erase_count)
+			ssd->min_erase_count = ssd->blocks[i].erase_count;
+		if (ssd->blocks[i].erase_count > ssd->max_erase_count)
+			ssd->max_erase_count = ssd->blocks[i].erase_count;
+		i++;
+	}
+}
+
 void	ssd_print_stats(t_ssd_state *ssd)
 {
 	double	write_amp;
@@ -108,6 +125,7 @@ void	ssd_print_stats(t_ssd_state *ssd)
 
 	if (!ssd)
 		return ;
+	ssd_refresh_erase_bounds(ssd);
 	if (ssd->host_writes > 0)
 		write_amp = (double)ssd->nand_writes / (double)ssd->host_writes;
 	else
@@ -125,7 +143,11 @@ void	ssd_print_stats(t_ssd_state *ssd)
 	}
 	printf("[SSD] host_writes=%zu\n", ssd->host_writes);
 	printf("[SSD] nand_writes=%zu\n", ssd->nand_writes);
-	printf("[SSD] erases=%zu gc_count=%zu gc_moves=%zu\n",
-		ssd->erases, ssd->gc_count, ssd->gc_moves);
+	printf("[SSD] erases=%zu\n", ssd->erases);
+	printf("[SSD] gc_count=%zu\n", ssd->gc_count);
+	printf("[SSD] gc_moves=%zu\n", ssd->gc_moves);
 	printf("[SSD] write_amp=%.2f\n", write_amp);
+	printf("[SSD] max_erase_count=%d\n", ssd->max_erase_count);
+	printf("[SSD] min_erase_count=%d\n", ssd->min_erase_count);
+	printf("[SSD] total_time_ms=%.2f\n", ssd->total_time_ms);
 }

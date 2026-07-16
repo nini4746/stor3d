@@ -39,6 +39,14 @@ typedef struct s_fs_lite
 	int				free_blocks[8192];
 }	t_fs_lite;
 
+// Byte-range request for WF/RF (spec v2 §VIII: WF <name> <offset> <len> <byte>)
+typedef struct s_fs_io
+{
+	size_t	offset;
+	size_t	len;
+	long	byte_val;
+}	t_fs_io;
+
 // Forward declaration
 typedef struct s_context	t_context;
 
@@ -48,13 +56,14 @@ void	fs_cleanup(t_fs_lite *fs);
 
 // File operations
 int		fs_create_file(t_fs_lite *fs, const char *name);
-int		fs_write_file(t_context *ctx, const char *name, size_t len,
-			unsigned char byte_val);
-int		fs_read_file(t_context *ctx, const char *name, size_t len);
+int		fs_write_file(t_context *ctx, const char *name, t_fs_io *io);
+int		fs_read_file(t_context *ctx, const char *name, t_fs_io *io);
 int		fs_checksum_file(t_context *ctx, const char *name);
 
 // Helper functions
 int		fs_find_file(t_fs_lite *fs, const char *name);
 size_t	fs_allocate_blocks(t_fs_lite *fs, size_t count);
+size_t	fs_block_lba(t_file_entry *file, size_t block_idx);
+int		fs_grow_file(t_fs_lite *fs, t_file_entry *file, size_t need_blocks);
 
 #endif
