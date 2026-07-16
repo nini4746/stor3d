@@ -45,7 +45,7 @@ int	execute_write_file(t_context *ctx, char *line)
 	while (*line && *line != ' ' && *line != '\t')
 		line++;
 	line = skip_whitespace(line);
-	if (parse_number(line, &byte_val))
+	if (parse_number(line, &byte_val) || byte_val < 0 || byte_val > 255)
 		return (perror("invalid script line"), 1);
 	return (fs_write_file(ctx, name, len, (unsigned char)byte_val));
 }

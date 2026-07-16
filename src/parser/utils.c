@@ -22,8 +22,12 @@ char	*skip_whitespace(char *str)
 int	parse_number(char *str, long *result)
 {
 	char	*endptr;
+	int		base;
 
-	*result = strtol(str, &endptr, 10);
+	base = 10;
+	if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X'))
+		base = 16;
+	*result = strtol(str, &endptr, base);
 	if (endptr == str || (*endptr != ' ' && *endptr != '\t'
 			&& *endptr != '\n' && *endptr != '\0'))
 		return (1);

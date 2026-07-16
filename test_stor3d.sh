@@ -9,7 +9,11 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m' # No Color
 
-PROGRAM="../stor3D"
+# Absolute path to the binary, resolved from this script's own location, so it
+# stays valid after we cd into TEST_DIR (previously "../stor3D" broke once the
+# working dir changed).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROGRAM="$SCRIPT_DIR/stor3D"
 TEST_DIR="test_output"
 PASSED=0
 FAILED=0
@@ -129,7 +133,7 @@ test_disk_creation() {
     # Create new disk image
     rm -f new_disk.img
     $PROGRAM hdd new_disk.img script.txt >/dev/null 2>&1
-    [ -f new_disk.img ] && [ $(stat -c%s new_disk.img) -eq 33554432 ]
+    [ -f new_disk.img ] && [ "$(wc -c < new_disk.img)" -eq 33554432 ]
     print_test "Create new disk image (32MB)" $?
 
     rm -f script.txt new_disk.img

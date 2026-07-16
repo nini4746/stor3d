@@ -43,7 +43,7 @@ int	execute_write(t_context *ctx, char *line)
 	while (*line && *line != ' ' && *line != '\t')
 		line++;
 	line = skip_whitespace(line);
-	if (parse_number(line, &byte_val))
+	if (parse_number(line, &byte_val) || byte_val < 0 || byte_val > 255)
 	{
 		perror("invalid script line");
 		return (1);
